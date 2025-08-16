@@ -13,13 +13,14 @@ async function getLindaResponse(question?: string, sessionData?: { history?: any
     const resp = await ollamaClient.chat({
       model: 'linda:latest',
       messages,
-      think: false,
     })
 
     const rawText =  resp?.message?.content ?? ''
     try {
       const jsonText = rawText.replace(/<think>[\s\S]*?<\/think>/, '').trim()
       const parsed = JSON.parse(jsonText)
+      console.log(parsed);
+      
       if (typeof parsed.response === 'string' && typeof parsed.trust === 'number' && typeof parsed.fear === 'number') {
         return { ok: true, raw: rawText, response: parsed.response, trust: parsed.trust, fear: parsed.fear, messages: messages.concat([{ role: 'assistant', content: rawText }]) }
       }
@@ -27,6 +28,7 @@ async function getLindaResponse(question?: string, sessionData?: { history?: any
       return { ok: false, raw: rawText, response: rawText, trust: sessionData?.trust ?? 40, fear: sessionData?.fear ?? 45, messages: messages.concat([{ role: 'assistant', content: rawText }]) }
     } catch (parseErr) {
       console.error('Failed to parse AI output as JSON. Raw output:', rawText)
+
       return { ok: false, raw: rawText, response: rawText, trust: sessionData?.trust ?? 40, fear: sessionData?.fear ?? 45, messages: messages.concat([{ role: 'assistant', content: rawText }]) }
     }
   } catch (err) {
