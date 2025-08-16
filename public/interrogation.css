@@ -1,0 +1,98 @@
+    body {
+        background-color: #0d0d0d;
+        color: #e0e0e0;
+        font-family: 'Courier New', monospace;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 100vh;
+        padding: 40px;
+    }
+
+    h1 {
+        font-size: 2.5rem;
+        color: #ff4d4d;
+        text-shadow: 0 0 5px #ff1a1a, 0 0 10px #ff4d4d;
+        margin-bottom: 20px;
+    }
+
+    h2 {
+        color: #b3b3b3;
+        font-size: 1.5rem;
+        border-bottom: 1px solid #444;
+        padding-bottom: 5px;
+        margin-bottom: 10px;
+    }
+
+    #chat-history {
+        background-color: rgba(20, 20, 20, 0.9);
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 15px;
+        
+        max-width:1000px;
+        max-height: 300px;
+        overflow-y: auto;
+        box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+    }
+
+    #chat-history div {
+        margin: 8px 0;
+    }
+
+    strong {
+        color: #ff4d4d;
+    }
+
+    form {
+        margin-top: 20px;
+        display: flex;
+        flex-direction: column;
+        width: 500px;
+    }
+
+    label {
+        margin-bottom: 8px;
+        font-size: 1.1rem;
+    }
+
+    input[type="text"] {
+        padding: 10px;
+        background-color: #1a1a1a;
+        color: #fff;
+        border: 1px solid #444;
+        border-radius: 4px;
+        outline: none;
+        font-size: 1rem;
+    }
+
+    input[type="text"]:focus {
+        border-color: #ff4d4d;
+        box-shadow: 0 0 8px #ff4d4d;
+    }
+
+    button {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #ff4d4d;
+        color: #fff;
+        font-size: 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+        background-color: #e63939;
+    }
+
+    p {
+        margin-top: 15px;
+        width: 500px;
+        color: #b3b3b3;
+        font-size: 1rem;
+    }
+

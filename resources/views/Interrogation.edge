@@ -1,0 +1,34 @@
+<!-- Interrogation.edge -->
+<link rel="stylesheet" href="/interrogation.css">
+<script src="/js/chat.js" defer></script>
+
+<div>
+    <h1>Linda Chavez Interrogation</h1>
+    <div>
+        <h2>Status</h2>
+        <div>
+            <strong>Trust:</strong> <span id="trust-value">--</span>
+            <strong>Fear:</strong> <span id="fear-value">--</span>
+        </div>
+    </div>
+    <div>
+        <h2>Chat History</h2>
+        <div id="chat-history">
+          @if(history && history.length > 0)
+            @each(message in history)
+              @if(message.role === 'Detective')
+                <div><strong>You:</strong> {{ message.content.replace('Detective: ', '') }}</div>
+              @elseif(message.role === 'assistant')
+                <div><strong>Linda:</strong> <pre>{{ message.content }}</pre></div>
+              @endif
+            @end
+          @endif
+        </div>
+    </div>
+    <p>As the investigator, you will ask questions to Linda Chavez, a key witness in the case. Your goal is to uncover the truth while navigating her guarded personality.</p>
+    <form id="question-form">
+        <label for="userInput">Ask Linda a question:</label>
+        <input type="text" id="userInput" name="userInput" />
+        <button type="submit">Send</button>
+    </form>
+</div>
