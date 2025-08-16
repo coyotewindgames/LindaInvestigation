@@ -39,8 +39,20 @@ window.addEventListener('DOMContentLoaded', function() {
           e.preventDefault();
           const question = userInput.value;
           if (!question.trim()) return;
-          chatHistory.push({ question });
-          renderChat();
+
+          // Add user's question to chat
+          const userMessageDiv = document.createElement('div');
+          userMessageDiv.innerHTML = `<strong>You:</strong> ${question}`;
+          chatHistoryDiv.appendChild(userMessageDiv);
+
+          // Add loading indicator for Linda's response
+          const lindaResponseDiv = document.createElement('div');
+          lindaResponseDiv.innerHTML = `<strong>Linda:</strong> <span class="loading">...</span>`;
+          chatHistoryDiv.appendChild(lindaResponseDiv);
+          chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+
+          userInput.value = '';
+
           try {
               console.log('Sending question to API:', question);
               const res = await fetch('/api/interrogate', {
@@ -48,36 +60,33 @@ window.addEventListener('DOMContentLoaded', function() {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ question })
               });
+
               if (!res.ok) {
                 const text = await res.text();
                 console.error('API returned non-OK:', res.status, text);
-                chatHistory.push({ response: `Error: ${text}` });
-                renderChat();
+                lindaResponseDiv.innerHTML = `<strong>Linda:</strong> <span class="error">Error: ${text}</span>`;
                 return;
-            }
-            const contentType = res.headers.get('content-type') || '';
-            if (!contentType.includes('application/json')) {
-                const text = await res.text();
-                console.error('API returned non-JSON:', contentType, text);
-                chatHistory.push({ response: `Error: Received non-JSON response.` });
-                renderChat();
-                return;
-            }
-              const data = await res.json();
-              console.log('API response:', data);
-              if (data.response) {
-                chatHistory.push({ response: data.response });
-                renderChat();
               }
-              if (data.trust && data.fear) {
-                updateStatus(data.trust, data.fear);
+
+              const reader = res.body.getReader();
+              const decoder = new TextDecoder();
+              let lindaResponse = '';
+              lindaResponseDiv.innerHTML = `<strong>Linda:</strong> <pre></pre>`;
+              const preElement = lindaResponseDiv.querySelector('pre');
+
+              while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  const chunk = decoder.decode(value, { stream: true });
+                  lindaResponse += chunk;
+                  preElement.textContent = lindaResponse;
+                  chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
               }
+
           } catch (err) {
               console.error('Error in API call:', err);
-              chatHistory.push({ response: 'Error loading AI response.' });
-              renderChat();
+              lindaResponseDiv.innerHTML = `<strong>Linda:</strong> <span class="error">Error loading AI response.</span>`;
           }
-          userInput.value = '';
       });
     }
 });

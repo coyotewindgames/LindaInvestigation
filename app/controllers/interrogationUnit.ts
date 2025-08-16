@@ -1,41 +1,9 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { Ollama } from 'ollama'
+import { PassThrough } from 'stream'
 
 // singleton Ollama client
-const ollamaClient = new Ollama({ host: 'http://127.0.0.1:11434'  })
-
-async function getLindaResponse(question?: string, sessionData?: { history?: any[]; trust?: number; fear?: number }) {
-  const history = sessionData?.history ?? []
-  const messages = [...history]
-  if (question) messages.push({ role: 'Detective', content: `Detective: ${question}` })
-
-  try {
-    const resp = await ollamaClient.chat({
-      model: 'linda:latest',
-      messages,
-    })
-
-    const rawText =  resp?.message?.content ?? ''
-    try {
-      const jsonText = rawText.replace(/<think>[\s\S]*?<\/think>/, '').trim()
-      const parsed = JSON.parse(jsonText)
-      console.log(parsed);
-      
-      if (typeof parsed.response === 'string' && typeof parsed.trust === 'number' && typeof parsed.fear === 'number') {
-        return { ok: true, raw: rawText, response: parsed.response, trust: parsed.trust, fear: parsed.fear, messages: messages.concat([{ role: 'assistant', content: rawText }]) }
-      }
-      console.error('AI returned JSON but with unexpected shape', parsed)
-      return { ok: false, raw: rawText, response: rawText, trust: sessionData?.trust ?? 40, fear: sessionData?.fear ?? 45, messages: messages.concat([{ role: 'assistant', content: rawText }]) }
-    } catch (parseErr) {
-      console.error('Failed to parse AI output as JSON. Raw output:', rawText)
-
-      return { ok: false, raw: rawText, response: rawText, trust: sessionData?.trust ?? 40, fear: sessionData?.fear ?? 45, messages: messages.concat([{ role: 'assistant', content: rawText }]) }
-    }
-  } catch (err) {
-    console.error('AI error', err)
-    return { ok: false, raw: 'Error generating AI response.', response: 'Error generating AI response.', trust: sessionData?.trust ?? 40, fear: sessionData?.fear ?? 45, messages: messages }
-  }
-}
+const ollamaClient = new Ollama({ host: 'http://127.0.0.1:11434' })
 
 export default class InterrogationUnit {
   async show({ view, session }: HttpContext) {
@@ -61,24 +29,62 @@ export default class InterrogationUnit {
     const question = request.input('question')
     console.log('InterrogationUnit.api called with question:', question)
 
-  const history = (await session.get('ai_history')) ?? []
-  const trust = (await session.get('trust')) ?? 40
-  const fear = (await session.get('fear')) ?? 45
+    const history = (await session.get('ai_history')) ?? []
 
-  const sessionData = { history, trust, fear }
-    const result = await getLindaResponse(question, sessionData)
-
-    // Persist updated conversation state and stats if available
-    if (result?.messages) {
-      await session.put('ai_history', result.messages)
-    }
-    if (typeof result?.trust === 'number') {
-      await session.put('trust', result.trust)
-    }
-    if (typeof result?.fear === 'number') {
-      await session.put('fear', result.fear)
+    const messages = [...history]
+    if (question) {
+      messages.push({ role: 'Detective', content: `Detective: ${question}` })
     }
 
-    return response.json(result)
+    response.header('Content-Type', 'text/plain')
+
+    const passthrough = new PassThrough()
+    response.stream(passthrough)
+
+    const runStreaming = async () => {
+      let fullResponse = ''
+      try {
+        const stream = await ollamaClient.chat({
+          model: 'linda:latest',
+          messages,
+          stream: true,
+          think: false,
+        })
+
+        for await (const part of stream) {
+          const chunk = part.message.content
+          if (chunk) {
+            passthrough.write(chunk)
+            fullResponse += chunk
+          }
+        }
+      } catch (error) {
+        console.error('Streaming error:', error)
+        passthrough.write('An error occurred while generating the response.')
+      } finally {
+        passthrough.end()
+      }
+
+      // Now that the stream is complete, process the full response
+      const newHistory = messages.concat([{ role: 'assistant', content: fullResponse }])
+      await session.put('ai_history', newHistory)
+
+      try {
+        const jsonText = fullResponse.replace(/<think>[\s\S]*?<\/think>/, '').trim()
+        if (jsonText) {
+          const parsed = JSON.parse(jsonText)
+          if (typeof parsed.trust === 'number') {
+            await session.put('trust', parsed.trust)
+          }
+          if (typeof parsed.fear === 'number') {
+            await session.put('fear', parsed.fear)
+          }
+        }
+      } catch (e) {
+        console.error('Could not parse trust/fear from AI response', e)
+      }
+    }
+
+    runStreaming()
   }
 }
